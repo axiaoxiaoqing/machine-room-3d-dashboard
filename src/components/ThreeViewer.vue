@@ -1,5 +1,10 @@
 <template>
     <div>
+      <!-- 页面标题 -->
+      <div id="page-title">
+        智慧院数字孪生机房系统
+      </div>
+      
       <!-- 全局告警信息面板 -->
       <div id="alarm-panel">
         <h3>告警信息</h3>
@@ -35,37 +40,35 @@
         </div>
       </div>
       
-      <div id="container" @mousemove="mouseMove">
-        <div
-          id='plane'
-          :style="{left: state.planePos.left,top:state.planePos.top,display: state.planeDisplay}"
-        >
-          <p>机柜名称：{{ state.curCabinet.name }}</p>
-          <p>机柜温度：{{ state.curCabinet.temperature.toFixed(1) }}°</p>
-          <p>使用情况：{{ state.curCabinet.count}} / {{ state.curCabinet.capacity}}</p>
+      <!-- 视频监控面板 -->
+      <div id="video-panel-1" class="video-panel">
+        <h3>视频监控 1</h3>
+        <div class="video-placeholder">
+          视频监控画面占位
         </div>
       </div>
+      
+      <div id="video-panel-2" class="video-panel">
+        <h3>视频监控 2</h3>
+        <div class="video-placeholder">
+          视频监控画面占位
+        </div>
+      </div>
+      
+      <!-- 引入3D组件 -->
+      <MachineRoom3D 
+        @cabinet-selected="handleCabinetSelected" 
+        @temperature-changed="handleTemperatureChange" 
+        @alarm-generated="handleAlarmGenerated" 
+      />
     </div>
   </template>
   
   <script setup>
-  import * as THREE from 'three'
-  import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-  import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
   import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
-
-  // 基础3D场景对象
-  let mesh = null
-  let camera = null
-  let scene = null
-  let renderer = null
-  let controls = null
-  let maps = null
-  let temperatureMonitorTimer = null
+  import MachineRoom3D from './MachineRoom3D.vue'
 
   // 响应式数据
-  const cabinets = ref([])
-  const curCabinet = ref(null)
   const alarms = ref([
     { id: 1, time: '2024-03-07 10:15:30', content: '机柜cabinet_01温度过高（45.0°C）', level: 'high' },
     { id: 2, time: '2024-03-07 10:10:20', content: '机房湿度低于阈值（30%）', level: 'medium' },
@@ -79,239 +82,42 @@
     cabinetCount: 20
   })
 
-  const state = reactive({
-    planePos: {
-      left: 0,
-      top: 0
-    },
-    planeDisplay: 'none',
-    curCabinet: {
-      name: 'Loading……',
-      temperature: 0,
-      capacity: 0,
-      count: 0
-    }
-  })
-
-  // 初始化
-  function init() {
-    createScene() // 创建场景
-    loadGLTF() // 加载GLTF模型
-    // createLight() // 创建光源
-    createCamera() // 创建相机
-    createRender() // 创建渲染器
-    createControls() // 创建控件对象
-    render() // 渲染
+  // 事件处理函数
+  function handleCabinetSelected(cabinet) {
+    console.log('机柜选中:', cabinet)
+    // 可以在这里处理机柜选中事件
   }
 
-  // 创建场景
-  function createScene() {
-    scene = new THREE.Scene()
+  function handleTemperatureChange(data) {
+    console.log('温度变化:', data)
+    // 可以在这里处理温度变化事件
   }
 
-  // 加载GLTF模型
-  function loadGLTF() {
-    const loader = new GLTFLoader()
-    loader.load(`./models/machineRoom.gltf`, ({ scene: { children } }) => {
-      console.log(...children);
-      children.forEach((obj) => {
-        const { map, color } = obj.material
-        changeMat(obj, map, color)
-        if (obj.name.includes('cabinet')) {
-          cabinets.value.push(obj)
-        }
-      })
-
-      scene.add(...children)
-    })
-  }
-
-  // 创建光源
-  function createLight() {
-    // 环境光
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.1) // 创建环境光
-    scene.add(ambientLight) // 将环境光添加到场景
-
-    const spotLight = new THREE.SpotLight(0xffffff) // 创建聚光灯
-    spotLight.position.set(150, 150, 150)
-    spotLight.castShadow = true
-    scene.add(spotLight)
-  }
-
-  // 创建相机
-  function createCamera() {
-    const element = document.getElementById('container')
-    const width = element.clientWidth // 窗口宽度
-    const height = element.clientHeight // 窗口高度
-    const k = width / height // 窗口宽高比
-    // PerspectiveCamera( fov, aspect, near, far )
-    camera = new THREE.PerspectiveCamera(45, k, 0.1, 1000)
-    camera.position.set(0, 10, 15) // 设置相机位置
-
-    camera.lookAt(0, 0, 0) // 设置相机方向
-    scene.add(camera)
-  }
-
-  // 创建渲染器
-  function createRender() {
-    const element = document.getElementById('container')
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setSize(element.clientWidth, element.clientHeight) // 设置渲染区域尺寸
-    // renderer.shadowMap.enabled = true // 显示阴影
-    // renderer.shadowMap.type = THREE.PCFSoftShadowMap
-    renderer.setClearColor(0x3f3f3f, 1) // 设置背景颜色
-    element.appendChild(renderer.domElement)
-  }
-
-  function render() {
-    // if (mesh) {
-    //   mesh.rotation.z += 0.006
-    // }
-    renderer.render(scene, camera)
-    requestAnimationFrame(render)
-  }
-
-  // 创建控件对象
-  function createControls() {
-    controls = new OrbitControls(camera, renderer.domElement)
-  }
-
-  /**
-   * obj：需要修改材质的Mesh 对象
-   * map：GLTF 模型里的贴图对象
-   * color：GLTF 模型的颜色
-   */
-  function changeMat(obj, map, color) {
-    if (map) {
-      obj.material = new THREE.MeshBasicMaterial({
-        map: crtTexture(map.name)
-      })
-    } else {
-      obj.material = new THREE.MeshBasicMaterial({ color })
-    }
-  }
-
-  function crtTexture(imgName) {
-    let curTexture = maps.get(imgName)
-    if (!curTexture) {
-      curTexture = new THREE.TextureLoader().load('./models/' + imgName)
-      curTexture.flipY = false
-      curTexture.wrapS = 1000
-      curTexture.wrapT = 1000
-      maps.set(
-        imgName,
-        curTexture
-      )
-    }
-    return curTexture
-  }
-
-  function selectCabinet(x, y) {
-    const { width, height } = renderer.domElement
-    //射线投射器，可基于鼠标点和相机，在世界坐标系内建立一条射线，用于选中模型
-    const raycaster = new THREE.Raycaster()
-    //鼠标在裁剪空间中的点位
-    const pointer = new THREE.Vector2()
-
-    // 鼠标的canvas坐标转裁剪坐标
-    pointer.set(
-      (x / width) * 2 - 1,
-      -(y / height) * 2 + 1,
+  function handleAlarmGenerated(alarm) {
+    console.log('生成告警:', alarm)
+    
+    // 检查是否已有相同内容的告警，避免重复
+    const existingAlarm = alarms.value.find(existing =>
+      existing.content === alarm.content &&
+      Date.now() - new Date(existing.time).getTime() < 60000 // 1分钟内不重复
     )
-    // 基于鼠标点的裁剪坐标位和相机设置射线投射器
-    raycaster.setFromCamera(
-      pointer, camera
-    )
-    // 选择机柜
-    const intersect = raycaster.intersectObjects(cabinets.value)[0]
-    let intersectObj = intersect ? intersect.object : null
-    // 若之前已有机柜被选择，且不等于当前所选择的机柜，取消之前选择的机柜的高亮
-    if (curCabinet.value && curCabinet.value !== intersectObj) {
-      const material = curCabinet.value.material
-      material.setValues({
-        map: maps.get('cabinet.jpg')
-      })
-    }
-    /* 
-      若当前所选对象不为空：
-        触发鼠标在机柜上移动的事件。
-        若当前所选对象不等于上一次所选对象：
-          更新curCabinet。
-          将模型高亮。
-          触发鼠标划入机柜事件。
-      否则若上一次所选对象存在：
-        置空curCabinet。
-        触发鼠标划出机柜事件。
-    */
-    if (intersectObj) {
-      onMouseMoveCabinet(x, y)
-      if (intersectObj !== curCabinet.value) {
-        curCabinet.value = intersectObj
-        const material = intersectObj.material
-        material.setValues({
-          map: maps.get('cabinet-hover.jpg')
-        })
-        onMouseOverCabinet(intersectObj)
-      }
-    } else if (curCabinet.value) {
-      curCabinet.value = null
-      onMouseOutCabinet()
-    }
-  }
 
-  // 鼠标移动事件
-  function mouseMove({ clientX, clientY }) {
-    selectCabinet(clientX, clientY)
-  }
+    if (!existingAlarm) {
+      // 添加到告警列表开头
+      alarms.value.unshift(alarm)
 
-  //鼠标划入机柜事件，参数为机柜对象
-  function onMouseOverCabinet(cabinet) {
-    console.log(cabinet.name);
-    state.curCabinet.name = cabinet.name
-    state.planeDisplay = 'block'
-    //基于cabinet.name 获取机柜数据
-    // getCabinateByName(cabinet.name).then(({ data }) => {
-    //   state.curCabinet = { ...data, name: cabinet.name }
-    // });
-  }
-
-  //鼠标在机柜上移动的事件，参数为鼠标在canvas画布上的坐标位
-  function onMouseMoveCabinet(x, y) {
-    // console.log(x,y);
-    state.planePos.left = x + 'px'
-    state.planePos.top = y + 'px'
-  }
-
-  //鼠标划出机柜的事件
-  function onMouseOutCabinet() {
-    state.planeDisplay = 'none'
-  }
-
-  function getCabinateByName(name) {
-    let path = 'http://127.0.0.1:4523/m1/2003080-0-default/name/'
-    return fetch(path + name).then((res) => res.json());
-  }
-
-  // 更新温度数据
-  function updateTemperatureData() {
-    // 模拟机柜温度变化
-    if (curCabinet.value && state.curCabinet.name !== 'Loading……') {
-      // 随机生成温度变化 (-1 到 +1 度)
-      const tempChange = (Math.random() - 0.5) * 2
-      let newTemp = state.curCabinet.temperature + tempChange
-
-      // 限制温度范围在 18-45°C 之间
-      newTemp = Math.max(18, Math.min(45, newTemp))
-      state.curCabinet.temperature = Math.round(newTemp * 10) / 10
-
-      // 检查温度是否超过阈值，生成告警
-      if (newTemp > 40) {
-        generateAlarm(state.curCabinet.name, newTemp, 'high')
-      } else if (newTemp > 35) {
-        generateAlarm(state.curCabinet.name, newTemp, 'medium')
+      // 限制告警数量，最多显示10条
+      if (alarms.value.length > 10) {
+        alarms.value.pop()
       }
     }
+  }
 
+  // 机房监控数据更新定时器
+  let roomMonitorTimer = null
+
+  // 更新机房整体监控数据
+  function updateRoomMonitorData() {
     // 更新机房整体温度
     const tempChange = (Math.random() - 0.5) * 1
     let newRoomTemp = roomMonitor.temperature + tempChange
@@ -323,80 +129,43 @@
     roomMonitor.powerLoad = Math.max(50, Math.min(90, roomMonitor.powerLoad + (Math.random() - 0.5) * 3))
   }
 
-  // 生成告警
-  function generateAlarm(cabinetName, temperature, level) {
-    const now = new Date()
-    const timeStr = now.toLocaleString('zh-CN')
-    // 确保温度显示小数点后一位
-    const formattedTemp = temperature.toFixed(1)
-    const content = `机柜${cabinetName}温度过高（${formattedTemp}°C）`
-
-    // 检查是否已有相同内容的告警，避免重复
-    const existingAlarm = alarms.value.find(alarm =>
-      alarm.content === content &&
-      Date.now() - new Date(alarm.time).getTime() < 60000 // 1分钟内不重复
-    )
-
-    if (!existingAlarm) {
-      const newAlarm = {
-        id: Date.now(),
-        time: timeStr,
-        content: content,
-        level: level
-      }
-
-      // 添加到告警列表开头
-      alarms.value.unshift(newAlarm)
-
-      // 限制告警数量，最多显示10条
-      if (alarms.value.length > 10) {
-        alarms.value.pop()
-      }
-    }
-  }
-
   // 生命周期钩子
   onMounted(() => {
-    maps = new Map()//添加maps属性，用来存储纹理对象，以避免贴图的重复加载
-    crtTexture("cabinet-hover.jpg")
-    init()
-
-    // 启动温度监控定时器，每3秒更新一次数据
-    temperatureMonitorTimer = setInterval(() => {
-      updateTemperatureData()
+    // 启动机房监控数据更新定时器，每3秒更新一次数据
+    roomMonitorTimer = setInterval(() => {
+      updateRoomMonitorData()
     }, 3000)
   })
 
   onBeforeUnmount(() => {
     // 清除定时器
-    if (temperatureMonitorTimer) {
-      clearInterval(temperatureMonitorTimer)
+    if (roomMonitorTimer) {
+      clearInterval(roomMonitorTimer)
     }
   })
 </script>
   <style>
-  #container {
+  /* 页面标题样式 */
+  #page-title {
     position: absolute;
-    width: 100%;
-    height: 100%;
-  }
-  #plane{
-    position: absolute;
-    top: 0;
-    left: 0;
-    background-color: rgba(0,0,0,0.5);
-    color: #fff;
-    padding: 0 18px;
-    transform: translate(12px,-100%);
-    display: none;
-    text-align: left;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 28px;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 10px 30px;
+    border-radius: 8px;
+    border: 2px solid #2196f3;
+    z-index: 1001;
   }
   
   /* 告警信息面板样式 */
   #alarm-panel {
     position: absolute;
-    top: 20px;
-    right: 20px;
+    top: 340px;
+    left: 20px;
     width: 350px;
     background-color: rgba(0, 0, 0, 0.8);
     border: 2px solid #ff4444;
@@ -464,7 +233,7 @@
     position: absolute;
     top: 20px;
     left: 20px;
-    width: 400px;
+    width: 350px;
     background-color: rgba(0, 0, 0, 0.8);
     border: 2px solid #2196f3;
     border-radius: 8px;
@@ -507,6 +276,49 @@
     font-size: 24px;
     font-weight: bold;
     color: #2196f3;
+  }
+  
+  /* 视频监控面板样式 */
+  .video-panel {
+    position: absolute;
+    right: 20px;
+    width: 350px;
+    background-color: rgba(0, 0, 0, 0.8);
+    border: 2px solid #2196f3;
+    border-radius: 8px;
+    color: #fff;
+    padding: 15px;
+    z-index: 1000;
+  }
+  
+  #video-panel-1 {
+    top: 20px;
+  }
+  
+  #video-panel-2 {
+    top: 320px;
+  }
+  
+  .video-panel h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #2196f3;
+    font-size: 18px;
+    border-bottom: 1px solid #2196f3;
+    padding-bottom: 8px;
+  }
+  
+  .video-placeholder {
+    width: 100%;
+    height: 150px;
+    background-color: rgba(76, 78, 175, 0.2);
+    border: 1px dashed #2196f3;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: #888;
   }
   </style>
   
