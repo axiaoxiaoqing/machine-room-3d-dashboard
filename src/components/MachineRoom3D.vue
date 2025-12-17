@@ -56,10 +56,10 @@ onBeforeUnmount(() => {
 function init() {
   scene = new THREE.Scene()
   //改背景颜色
-  scene.background = new THREE.Color(0x0a192f)
+  scene.background = new THREE.Color('rgba(0, 32, 49, 0.9)')
 
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-  camera.position.set(10, 10, 10)
+  camera.position.set(10, 15, 15)
 
   renderer = new THREE.WebGLRenderer({ antialias: true })
   renderer.setSize(window.innerWidth, window.innerHeight)
@@ -74,6 +74,7 @@ function init() {
   controls = new OrbitControls(camera, canvas)
   controls.enableDamping = true
   controls.dampingFactor = 0.05
+  controls.target.set(0, 5, 0)
 
   raycaster = new THREE.Raycaster()
   mouse = new THREE.Vector2()
@@ -111,19 +112,16 @@ function handleClick(event) {
   raycaster.setFromCamera(mouse, camera)
   const intersects = raycaster.intersectObjects(scene.children, true)
 
-  // 过滤出可选择的几何体，排除地板
+  // 过滤出可选择的几何体，只有名称为"body+编号"格式的对象才能被选中
   const filteredIntersects = intersects.filter(intersect => {
     let obj = intersect.object
     // 查找最外层的Mesh
     while (obj && !obj.isMesh) {
       obj = obj.parent
     }
-    // 只选择有userData.isSelectable标记且为true的对象，或者名称不包含"floor"、"地面"等地板相关词汇的对象
+    // 只选择名称为"body+编号"格式的对象（如body004）
     return obj && obj.isMesh && 
-           (obj.userData.isSelectable === true || 
-            !obj.name.toLowerCase().includes('floor') && 
-            !obj.name.toLowerCase().includes('地面') && 
-            !obj.name.toLowerCase().includes('地板'))
+           /^body\d+$/.test(obj.name.toLowerCase())
   })
 
   if (filteredIntersects.length > 0) {
@@ -146,7 +144,8 @@ function handleClick(event) {
     deselectObject()
   }
 }
-
+let highlightedWireframe = null
+const originalWireframes = new Map()
 function selectObject(mesh) {
   // 如果已经选中相同的对象，则取消选择
   if (highlightedMesh === mesh) {
@@ -156,25 +155,40 @@ function selectObject(mesh) {
 
   // 清除之前的高亮
   if (highlightedMesh) {
-    restoreOriginalMaterial(highlightedMesh)
+    deselectObject()
   }
 
-  // 保存原始材质并应用高亮材质
   highlightedMesh = mesh
   
+  // 确保原始材质被保存
   if (!originalMaterials.has(mesh)) {
     originalMaterials.set(mesh, mesh.material)
   }
+
+  // 创建边框线框
+  const edgesGeometry = new THREE.EdgesGeometry(mesh.geometry)
   
-const highlightMaterial = new THREE.MeshPhongMaterial({
-  color: 0x00ff88,           // 主颜色
-  shininess: 100,            // 高光强度
-  specular: 0xffffff,        // 高光颜色
-  emissive: 0x00ff88,        // 自发光颜色
-  emissiveIntensity: 0.3     // 自发光强度
-})
+  // 方案A：直接使用网格的几何体
+  const wireframe = new THREE.LineSegments(
+    edgesGeometry,
+    new THREE.LineBasicMaterial({
+      color: 0x00ff88,
+      linewidth: 2
+    })
+  )
   
-  mesh.material = highlightMaterial
+  // 关键：将线框的变换与网格完全同步
+  wireframe.position.set(0, 0, 0)
+  wireframe.rotation.set(0, 0, 0)
+  wireframe.scale.set(1, 1, 1)
+  
+  // 将线框添加为网格的子对象，这样它会继承所有变换
+  mesh.add(wireframe)
+  
+  // 更新世界矩阵
+  mesh.updateMatrixWorld(true)
+  
+  highlightedWireframe = wireframe
   
   selectedObject.value = {
     name: mesh.name || mesh.parent?.name || '未命名',
@@ -182,26 +196,38 @@ const highlightMaterial = new THREE.MeshPhongMaterial({
     position: mesh.position,
     uuid: mesh.uuid
   }
-  
-  console.log('选中对象:', selectedObject.value)
 }
 
-function restoreOriginalMaterial(mesh) {
-  const originalMaterial = originalMaterials.get(mesh)
-  if (originalMaterial) {
-    mesh.material = originalMaterial
-    originalMaterials.delete(mesh)
-  }
-}
-
+// 同时需要修改取消选择函数
 function deselectObject() {
   if (highlightedMesh) {
-    restoreOriginalMaterial(highlightedMesh)
+    // 移除高亮线框
+    if (highlightedWireframe) {
+      highlightedMesh.remove(highlightedWireframe)
+      highlightedWireframe.geometry.dispose()
+      highlightedWireframe.material.dispose()
+      highlightedWireframe = null
+    }
+    
+    // 恢复原始材质（如果需要的话）
+    if (originalMaterials.has(highlightedMesh)) {
+      // 如果你还想保持原始材质，可以取消注释下面这行
+      // highlightedMesh.material = originalMaterials.get(highlightedMesh)
+      originalMaterials.delete(highlightedMesh)
+    }
+    
+    // 清理线框映射表中的数据
+    if (originalWireframes.has(highlightedMesh)) {
+      originalWireframes.delete(highlightedMesh)
+    }
+    
     highlightedMesh = null
   }
   selectedObject.value = null
-  infoPosition.value = null
 }
+
+
+
 
 function loadModel() {
   const loader = new GLTFLoader()
@@ -209,7 +235,7 @@ function loadModel() {
   const cabinetTexture = textureLoader.load('/models/cabinet.jpg')
   
   loader.load(
-    '/models/机房尝试.glb',
+    '/models/jifang3.glb',
     (gltf) => {
       const model = gltf.scene
       
@@ -223,7 +249,8 @@ function loadModel() {
           // 检查是否为地板，如果是则设置为不可选择
           const isFloor = child.name.toLowerCase().includes('floor') || 
                          child.name.toLowerCase().includes('地面') || 
-                         child.name.toLowerCase().includes('地板')
+                         child.name.toLowerCase().includes('地板')|| 
+                         child.name.toLowerCase().includes('glass')
           
           if (isFloor) {
             child.userData.isSelectable = false
@@ -247,6 +274,7 @@ function loadModel() {
         }
       })
       
+      
       const box = new THREE.Box3().setFromObject(model)
       const center = box.getCenter(new THREE.Vector3())
       const size = box.getSize(new THREE.Vector3())
@@ -256,13 +284,13 @@ function loadModel() {
       model.position.z = -center.z
       
       const maxDim = Math.max(size.x, size.y, size.z)
-      const scale = 10 / maxDim
+      const scale = 40 / maxDim
       model.scale.setScalar(scale)
       
       scene.add(model)
       
-      camera.position.set(0, size.y * 1.5, size.z * 2)
-      controls.target.set(0, size.y * 0.5, 0)
+      camera.position.set(0, size.y * 1.8, size.z * 2.2)
+      controls.target.set(0, size.y * 0.6, 0)
       controls.update()
       
       console.log('模型加载成功')
@@ -277,50 +305,7 @@ function loadModel() {
   )
 }
 
-function createDefaultModel() {
-  const geometry = new THREE.BoxGeometry(1, 1, 1)
-  
-  // 加载机柜纹理
-  const textureLoader = new THREE.TextureLoader()
-  const cabinetTexture = textureLoader.load('/models/cabinet.jpg')
-  
-  const positions = [
-    [0, 0, 0, '主服务器'],
-    [2, 0, 0, '交换机'],
-    [-2, 0, 0, '存储设备'],
-    [0, 2, 0, 'UPS电源'],
-    [0, 0, 2, '机柜']
-  ]
-  
-  positions.forEach((pos, index) => {
-    let material
-    material = new THREE.MeshPhongMaterial({ 
-        map: cabinetTexture,
-        shininess: 30 
-      })
-    // 为机柜添加纹理
-    // if (pos[3] === '机柜') {
-    //   material = new THREE.MeshPhongMaterial({ 
-    //     map: cabinetTexture,
-    //     shininess: 30 
-    //   })
-    // } else {
-    //   material = new THREE.MeshPhongMaterial({ 
-    //     color: 0x2196f3,
-    //     shininess: 30 
-    //   })
-    // }
-    const cube = new THREE.Mesh(geometry, material)
-    cube.position.set(pos[0], pos[1], pos[2])
-    cube.name = pos[3]
-    cube.userData.isSelectable = true
-    scene.add(cube)
-  })
-  
-  camera.position.set(5, 5, 5)
-  controls.target.set(0, 0, 0)
-  controls.update()
-}
+
 
 function animate() {
   requestAnimationFrame(animate)
