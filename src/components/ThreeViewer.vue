@@ -1,12 +1,12 @@
 <template>
     <div>
       <!-- 页面标题 -->
-      <div id="page-title">
+      <div id="page-title" class="header">
         智慧院数字孪生机房系统
       </div>
       
       <!-- 全局告警信息面板 -->
-      <div id="alarm-panel">
+      <div id="alarm-panel" class="panel">
         <h3>告警信息</h3>
         <div class="alarm-list">
           <div v-for="alarm in alarms" :key="alarm.id" class="alarm-item" :class="alarm.level">
@@ -18,7 +18,7 @@
       </div>
       
       <!-- 机房整体监控面板 -->
-      <div id="monitor-panel">
+      <div id="monitor-panel" class="panel">
         <h3>机房监控</h3>
         <div class="monitor-grid">
           <div class="monitor-item">
@@ -41,14 +41,14 @@
       </div>
       
       <!-- 视频监控面板 -->
-      <div id="video-panel-1" class="video-panel">
+      <div id="video-panel-1" class="video-panel panel" >
         <h3>视频监控 1</h3>
         <div class="video-placeholder">
           视频监控画面占位
         </div>
       </div>
       
-      <div id="video-panel-2" class="video-panel">
+      <div id="video-panel-2" class="video-panel panel">
         <h3>视频监控 2</h3>
         <div class="video-placeholder">
           视频监控画面占位
@@ -148,28 +148,58 @@
   /* 页面标题样式 */
   #page-title {
     position: absolute;
-    top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 28px;
+    font-size: 24px;
     font-weight: bold;
     color: #ffffff;
-    background-color: rgba(0, 0, 0, 0.8);
+
     padding: 10px 30px;
-    border-radius: 8px;
-    border: 2px solid #2196f3;
     z-index: 1001;
+  }
+  .header {
+  position: absolute;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100vw;
+  /* height: 1rem; */
+  /* padding-bottom: 10px; */
+  font-size: 0.4rem;
+  font-weight: bold;
+  color: #fff;
+  background: url('/public/models/header_bg.png');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+}
+
+  .panel{
+  padding: 20px;
+  position: relative;
+  box-sizing: border-box;
+  /* min-width: 300px; */
+  /* width: 450px; */
+  height: 300px;
+  /* padding: 0.1rem 0.2rem; */
+  background: linear-gradient(#99fffe, #99fffe) left -3px top 0, linear-gradient(#99fffe, #99fffe) left -3px top -3px, linear-gradient(#99fffe, #99fffe) right -3px top 0, linear-gradient(#99fffe, #99fffe) right -3px top -3px, linear-gradient(#99fffe, #99fffe) left -3px bottom 0, linear-gradient(#99fffe, #99fffe) left -3px bottom -3px, linear-gradient(#99fffe, #99fffe) right -3px bottom 0, linear-gradient(#99fffe, #99fffe) right -3px bottom -3px;
+  background-color: rgba(0, 34, 51, 0.6);
+  background-repeat: no-repeat;
+  background-size: 20px 20px, 20px 20px;
+  background-size: 3px 16px, 16px 3px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(1px);
+  color: #fff;
+  z-index: 2;
   }
   
   /* 告警信息面板样式 */
   #alarm-panel {
     position: absolute;
-    top: 340px;
+    top: 380px;
     left: 20px;
     width: 350px;
-    background-color: rgba(0, 0, 0, 0.8);
-    border: 2px solid #ff4444;
-    border-radius: 8px;
     color: #fff;
     padding: 15px;
     z-index: 1000;
@@ -231,12 +261,9 @@
   /* 机房监控面板样式 */
   #monitor-panel {
     position: absolute;
-    top: 20px;
+    top: 60px;
     left: 20px;
     width: 350px;
-    background-color: rgba(0, 0, 0, 0.8);
-    border: 2px solid #2196f3;
-    border-radius: 8px;
     color: #fff;
     padding: 15px;
     z-index: 1000;
@@ -283,20 +310,17 @@
     position: absolute;
     right: 20px;
     width: 350px;
-    background-color: rgba(0, 0, 0, 0.8);
-    border: 2px solid #2196f3;
-    border-radius: 8px;
     color: #fff;
     padding: 15px;
     z-index: 1000;
   }
   
   #video-panel-1 {
-    top: 20px;
+    top: 60px;
   }
   
   #video-panel-2 {
-    top: 320px;
+    top: 380px;
   }
   
   .video-panel h3 {
