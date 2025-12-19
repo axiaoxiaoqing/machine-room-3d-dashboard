@@ -105,7 +105,172 @@ function handleResize() {
   renderer.setSize(window.innerWidth, window.innerHeight)
 }
 
+// function handleClick(event) {
+//   deselectObject()
+//   const rect = renderer.domElement.getBoundingClientRect()
+//   mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+//   mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+//   raycaster.setFromCamera(mouse, camera)
+//   const intersects = raycaster.intersectObjects(scene.children, true)
+//   // 过滤出可选择的几何体，只有名称为"body+编号"格式的对象才能被选中
+//   const filteredIntersects = intersects.filter(intersect => {
+//     let obj = intersect.object
+//     // 检查整个父链，直到找到名称为body+编号格式的对象
+//     while (obj) {
+
+//       if (obj.isGroup && /^机柜\d+$/.test(obj.name.toLowerCase())) {
+     
+//         return true
+//       }
+//       obj = obj.parent
+//     }
+//     return false
+//   })
+
+//   if (filteredIntersects.length > 0) {    // 从相交点中找到最外层的body对象
+//     let intersect = filteredIntersects[0]
+//     let selectedMesh = intersect.object
+    
+//     // 向上查找，直到找到名称为body+编号格式的Mesh对象
+//     let bodyMesh = null
+//     let tempObj = selectedMesh
+//     while (tempObj) {
+
+//       if (tempObj.isGroup && /^机柜\d+$/.test(tempObj.name.toLowerCase())) {
+//         bodyMesh = tempObj
+//         break
+//       }
+//       tempObj = tempObj.parent
+//     }
+    
+//     // 如果找到了body对象
+//     if (bodyMesh) {
+//       // 先调用selectObject（内部会调用deselectObject清除之前的高亮）
+//       selectObject(bodyMesh)
+//       // 然后再设置信息框位置，确保不会被deselectObject重置
+//       infoPosition.value = {
+//         x: event.clientX + 20,  // 向右偏移20px
+//         y: event.clientY - 20   // 向上偏移20px
+//       }
+//     } else {
+//       deselectObject()
+//     }
+//   } else {
+//     deselectObject()
+//   }
+// }
+// 修改selectObject函数
+function selectObject(group) {
+  // 清除之前的高亮
+  deselectObject()
+
+  // 查找要高亮的所有Mesh对象
+  const objectsToHighlight = []
+  
+  // 遍历group及其所有子对象，收集所有Mesh
+  group.traverse((child) => {
+    if (child.isMesh) {
+      objectsToHighlight.push(child)
+    }
+  })
+  
+  // 如果没有Mesh，直接使用group本身
+  if (objectsToHighlight.length === 0) {
+    objectsToHighlight.push(group)
+  }
+
+  console.log('选中组对象:', group)
+  console.log('要高亮的Mesh数量:', objectsToHighlight.length)
+
+  // 为所有Mesh添加边框高亮
+  objectsToHighlight.forEach(mesh => {
+    highlightMesh(mesh)
+  })
+  
+  // 更新选中对象信息
+  selectedObject.value = {
+    name: group.name || group.parent?.name || '未命名',
+    type: group.type,
+    position: group.position,
+    uuid: group.uuid
+  }
+}
+
+// 为单个Mesh添加高亮边框
+function highlightMesh(mesh) {
+  // 保存到高亮数组
+  highlightedMeshes.push(mesh)
+  
+  // 保存原始材质
+  if (!originalMaterials.has(mesh)) {
+    originalMaterials.set(mesh, mesh.material)
+  }
+  
+  // 创建边框几何体
+  const edgesGeometry = new THREE.EdgesGeometry(mesh.geometry)
+  const wireframeMaterial = new THREE.LineBasicMaterial({
+    color: 0x00ff88, // 高亮颜色
+    linewidth: 2
+  })
+  
+  // 创建边框线框
+  const wireframe = new THREE.LineSegments(edgesGeometry, wireframeMaterial)
+  
+  // 同步mesh的变换
+  wireframe.position.copy(mesh.position)
+  wireframe.rotation.copy(mesh.rotation)
+  wireframe.scale.copy(mesh.scale)
+  
+  // 设置renderOrder确保边框显示在顶部
+  wireframe.renderOrder = 1
+  mesh.renderOrder = 0
+  
+  // 将边框添加到场景中（作为mesh的子对象）
+  mesh.add(wireframe)
+  
+  // 添加到边框数组
+  highlightedWireframes.push(wireframe)
+}
+
+// 修改deselectObject函数
+function deselectObject() {
+  // 移除所有高亮边框
+  highlightedWireframes.forEach(wireframe => {
+    if (wireframe.parent) {
+      wireframe.parent.remove(wireframe)
+    }
+    // 清理几何体和材质
+    wireframe.geometry.dispose()
+    wireframe.material.dispose()
+  })
+  
+  // 恢复原始材质（如果需要）
+  highlightedMeshes.forEach(mesh => {
+    if (originalMaterials.has(mesh)) {
+      // 如果你修改了mesh的材质，可以在这里恢复
+      // mesh.material = originalMaterials.get(mesh)
+      originalMaterials.delete(mesh)
+    }
+  })
+  
+  // 清空数组
+  highlightedMeshes.length = 0
+  highlightedWireframes.length = 0
+  
+  // 重置所有状态
+  selectedObject.value = null
+  infoPosition.value = null  // 清除信息框位置
+  
+  console.log('取消选择，清理高亮边框')
+}
+
+
+
+// 修改handleClick函数中的选择逻辑
 function handleClick(event) {
+  deselectObject()
+  
   const rect = renderer.domElement.getBoundingClientRect()
   mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
   mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
@@ -113,44 +278,31 @@ function handleClick(event) {
   raycaster.setFromCamera(mouse, camera)
   const intersects = raycaster.intersectObjects(scene.children, true)
 
-  // 过滤出可选择的几何体，只有名称为"body+编号"格式的对象才能被选中
-  const filteredIntersects = intersects.filter(intersect => {
-    let obj = intersect.object
-    // 检查整个父链，直到找到名称为body+编号格式的对象
-    while (obj) {
-      if (obj.isMesh && /^body\d+$/.test(obj.name.toLowerCase())) {
-        return true
-      }
-      obj = obj.parent
-    }
-    return false
-  })
-
-  if (filteredIntersects.length > 0) {
-    // 从相交点中找到最外层的body对象
-    let intersect = filteredIntersects[0]
-    let selectedMesh = intersect.object
+  if (intersects.length > 0) {
+    // 查找带有"机柜"的对象
+    let targetObj = null
     
-    // 向上查找，直到找到名称为body+编号格式的Mesh对象
-    let bodyMesh = null
-    let tempObj = selectedMesh
-    while (tempObj) {
-      if (tempObj.isMesh && /^body\d+$/.test(tempObj.name.toLowerCase())) {
-        bodyMesh = tempObj
-        break
+    for (const intersect of intersects) {
+      let obj = intersect.object
+      
+      // 检查当前对象及其所有父对象的名称
+      while (obj) {
+        if (obj.name && obj.name.includes('机柜')) {
+          targetObj = obj
+          break
+        }
+        obj = obj.parent
       }
-      tempObj = tempObj.parent
+      
+      if (targetObj) break
     }
     
-    // 如果找到了body对象
-    if (bodyMesh) {
-      // 先调用selectObject（内部会调用deselectObject清除之前的高亮）
-      selectObject(bodyMesh)
-      // 然后再设置信息框位置，确保不会被deselectObject重置
-      infoPosition.value = {
-        x: event.clientX + 20,  // 向右偏移20px
-        y: event.clientY - 20   // 向上偏移20px
-      }
+    if (targetObj) {
+      // 执行选择
+      selectObject(targetObj)
+      
+      // 设置信息面板位置
+      setInfoPanelPosition(event)
     } else {
       deselectObject()
     }
@@ -158,116 +310,13 @@ function handleClick(event) {
     deselectObject()
   }
 }
-const originalWireframes = new Map()
-function selectObject(mesh) {
-  // 清除之前的高亮
-  deselectObject()
 
-  // 查找要高亮的所有对象：当前选中的body和对应的door-body
-  const objectsToHighlight = [mesh]
-  
-  // 如果当前是body对象，尝试找到对应的door-body对象
-  if (mesh.name && mesh.name.toLowerCase().startsWith('body')) {
-    // 从body名称中提取编号，例如body004 → 004
-    const bodyNumber = mesh.name.substring(4)  // 假设名称格式为"bodyXXX"
-    const doorBodyName = `door-body${bodyNumber}`
-    
-    // 在场景中查找对应的door-body对象
-    let doorBodyFound = false
-    scene.traverse((child) => {
-      if (child.isMesh && child.name === doorBodyName) {
-        objectsToHighlight.push(child)
-        doorBodyFound = true
-      }
-    })
-    
-    if (!doorBodyFound) {
-      // 尝试另一种命名格式，例如body004 → doorbody004
-      const alternativeDoorBodyName = `doorbody${bodyNumber}`
-      scene.traverse((child) => {
-        if (child.isMesh && child.name === alternativeDoorBodyName) {
-          objectsToHighlight.push(child)
-        }
-      })
-    }
+// 添加设置信息面板位置的函数
+function setInfoPanelPosition(event) {
+  infoPosition.value = {
+    x: event.clientX + 20,  // 向右偏移20px
+    y: event.clientY - 20   // 向上偏移20px
   }
-
-  // 为所有要高亮的对象创建边框
-  objectsToHighlight.forEach(obj => {
-    highlightedMeshes.push(obj)
-    
-    // 确保原始材质被保存
-    if (!originalMaterials.has(obj)) {
-      originalMaterials.set(obj, obj.material)
-    }
-
-    // 创建边框线框
-    const edgesGeometry = new THREE.EdgesGeometry(obj.geometry)
-    
-    // 直接使用网格的几何体
-    const wireframe = new THREE.LineSegments(
-      edgesGeometry,
-      new THREE.LineBasicMaterial({
-        color: 0x00ff88,
-        linewidth: 2
-      })
-    )
-    
-    // 关键：将线框的变换与网格完全同步
-    wireframe.position.set(0, 0, 0)
-    wireframe.rotation.set(0, 0, 0)
-    wireframe.scale.set(1, 1, 1)
-    
-    // 将线框添加为网格的子对象，这样它会继承所有变换
-    obj.add(wireframe)
-    
-    // 更新世界矩阵
-    obj.updateMatrixWorld(true)
-    
-    highlightedWireframes.push(wireframe)
-  })
-  
-  selectedObject.value = {
-    name: mesh.name || mesh.parent?.name || '未命名',
-    type: mesh.type,
-    position: mesh.position,
-    uuid: mesh.uuid
-  }
-}
-
-// 同时需要修改取消选择函数
-function deselectObject() {
-  // 移除所有高亮线框
-  highlightedWireframes.forEach(wireframe => {
-    // 查找线框的父对象并移除
-    if (wireframe.parent) {
-      wireframe.parent.remove(wireframe)
-    }
-    wireframe.geometry.dispose()
-    wireframe.material.dispose()
-  })
-  
-  // 恢复所有原始材质（如果需要的话）
-  highlightedMeshes.forEach(mesh => {
-    if (originalMaterials.has(mesh)) {
-      // 如果你还想保持原始材质，可以取消注释下面这行
-      // mesh.material = originalMaterials.get(mesh)
-      originalMaterials.delete(mesh)
-    }
-    
-    // 清理线框映射表中的数据
-    if (originalWireframes.has(mesh)) {
-      originalWireframes.delete(mesh)
-    }
-  })
-  
-  // 清空数组 - 使用空数组重新赋值，确保引用也更新
-  highlightedMeshes.length = 0
-  highlightedWireframes.length = 0
-  
-  // 重置所有状态
-  selectedObject.value = null
-  infoPosition.value = null  // 清除信息框位置
 }
 
 
@@ -279,7 +328,7 @@ function loadModel() {
   const cabinetTexture = textureLoader.load('/models/cabinet.jpg')
   
   loader.load(
-    '/models/datacenter.glb',
+    '/models/机房6.glb',
     (gltf) => {
       const model = gltf.scene
       
