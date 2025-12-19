@@ -22,20 +22,12 @@
         <h3>机房监控</h3>
         <div class="monitor-grid">
           <div class="monitor-item">
-            <span class="monitor-label">机房温度</span>
+            <span class="monitor-label">机房温度1</span>
             <span class="monitor-value">{{ roomMonitor.temperature.toFixed(1) }}°C</span>
           </div>
           <div class="monitor-item">
-            <span class="monitor-label">机房湿度</span>
-            <span class="monitor-value">{{ roomMonitor.humidity.toFixed(1) }}%</span>
-          </div>
-          <div class="monitor-item">
-            <span class="monitor-label">电力负载</span>
-            <span class="monitor-value">{{ roomMonitor.powerLoad.toFixed(1) }}%</span>
-          </div>
-          <div class="monitor-item">
-            <span class="monitor-label">机柜总数</span>
-            <span class="monitor-value">{{ roomMonitor.cabinetCount }}</span>
+            <span class="monitor-label">机房温度2</span>
+            <span class="monitor-value">{{ roomMonitor.temperature2.toFixed(1) }}%</span>
           </div>
         </div>
       </div>
@@ -77,9 +69,10 @@
 
   const roomMonitor = reactive({
     temperature: 28.0,
-    humidity: 45.0,
-    powerLoad: 75.0,
-    cabinetCount: 20
+    temperature2: 28.1,
+
+
+
   })
 
   // 事件处理函数
@@ -181,7 +174,6 @@
   box-sizing: border-box;
   /* min-width: 300px; */
   /* width: 450px; */
-  height: 300px;
   /* padding: 0.1rem 0.2rem; */
   background: linear-gradient(#99fffe, #99fffe) left -3px top 0, linear-gradient(#99fffe, #99fffe) left -3px top -3px, linear-gradient(#99fffe, #99fffe) right -3px top 0, linear-gradient(#99fffe, #99fffe) right -3px top -3px, linear-gradient(#99fffe, #99fffe) left -3px bottom 0, linear-gradient(#99fffe, #99fffe) left -3px bottom -3px, linear-gradient(#99fffe, #99fffe) right -3px bottom 0, linear-gradient(#99fffe, #99fffe) right -3px bottom -3px;
   background-color: rgba(0, 34, 51, 0.6);
@@ -197,7 +189,7 @@
   /* 告警信息面板样式 */
   #alarm-panel {
     position: absolute;
-    top: 380px;
+    top: 260px;
     left: 20px;
     width: 350px;
     color: #fff;

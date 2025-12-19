@@ -87,11 +87,7 @@ function init() {
   directionalLight.position.set(10, 20, 0)
   scene.add(directionalLight)
 
-  // 网格
-  // const gridHelper = new THREE.GridHelper(50, 50)
-  // gridHelper.material.opacity = 0.2
-  // gridHelper.material.transparent = true
-  // scene.add(gridHelper)
+
 
   window.addEventListener('resize', handleResize)
   window.addEventListener('click', handleClick)
@@ -105,61 +101,7 @@ function handleResize() {
   renderer.setSize(window.innerWidth, window.innerHeight)
 }
 
-// function handleClick(event) {
-//   deselectObject()
-//   const rect = renderer.domElement.getBoundingClientRect()
-//   mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-//   mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
 
-//   raycaster.setFromCamera(mouse, camera)
-//   const intersects = raycaster.intersectObjects(scene.children, true)
-//   // 过滤出可选择的几何体，只有名称为"body+编号"格式的对象才能被选中
-//   const filteredIntersects = intersects.filter(intersect => {
-//     let obj = intersect.object
-//     // 检查整个父链，直到找到名称为body+编号格式的对象
-//     while (obj) {
-
-//       if (obj.isGroup && /^机柜\d+$/.test(obj.name.toLowerCase())) {
-     
-//         return true
-//       }
-//       obj = obj.parent
-//     }
-//     return false
-//   })
-
-//   if (filteredIntersects.length > 0) {    // 从相交点中找到最外层的body对象
-//     let intersect = filteredIntersects[0]
-//     let selectedMesh = intersect.object
-    
-//     // 向上查找，直到找到名称为body+编号格式的Mesh对象
-//     let bodyMesh = null
-//     let tempObj = selectedMesh
-//     while (tempObj) {
-
-//       if (tempObj.isGroup && /^机柜\d+$/.test(tempObj.name.toLowerCase())) {
-//         bodyMesh = tempObj
-//         break
-//       }
-//       tempObj = tempObj.parent
-//     }
-    
-//     // 如果找到了body对象
-//     if (bodyMesh) {
-//       // 先调用selectObject（内部会调用deselectObject清除之前的高亮）
-//       selectObject(bodyMesh)
-//       // 然后再设置信息框位置，确保不会被deselectObject重置
-//       infoPosition.value = {
-//         x: event.clientX + 20,  // 向右偏移20px
-//         y: event.clientY - 20   // 向上偏移20px
-//       }
-//     } else {
-//       deselectObject()
-//     }
-//   } else {
-//     deselectObject()
-//   }
-// }
 // 修改selectObject函数
 function selectObject(group) {
   // 清除之前的高亮
@@ -328,7 +270,7 @@ function loadModel() {
   const cabinetTexture = textureLoader.load('/models/cabinet.jpg')
   
   loader.load(
-    '/models/机房6.glb',
+    '/models/myjifang.glb',
     (gltf) => {
       const model = gltf.scene
       
